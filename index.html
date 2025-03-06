@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversor de Imagens</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jimp/browser/lib/jimp.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+    <div class="bg-white p-6 rounded-xl shadow-lg w-[28rem] text-center space-y-4">
+        <h1 class="text-2xl font-bold text-gray-800">Conversor de Imagens</h1>
+
+        <!-- Área de Drag and Drop com preview -->
+        <div id="dropZone" class="border-2 border-dashed border-gray-400 rounded-lg p-6 cursor-pointer bg-gray-50 hover:bg-gray-100 relative">
+            <p id="dropText" class="text-gray-600">Arraste e solte uma imagem aqui ou clique para selecionar</p>
+            <input type="file" id="fileInput" class="hidden" accept="image/*">
+            <img id="imagePreview" class="hidden mt-2 max-h-40 mx-auto rounded-lg shadow-md">
+        </div>
+
+        <select id="formatSelect" class="w-full border p-2 rounded-lg">
+            <option value="png">PNG</option>
+            <option value="jpg">JPG</option>
+            <option value="webp">WEBP</option>
+        </select>
+
+        <button onclick="convertImage()" class="bg-blue-600 text-white px-4 py-2 rounded-lg w-full hover:bg-blue-700">
+            Converter Imagem
+        </button>
+
+        <!-- Div que controla a visibilidade do botão de download -->
+        <div id="downloadContainer" class="hidden">
+            <a id="downloadLink" class="block mt-3 bg-green-600 text-white px-4 py-2 rounded-lg w-full hover:bg-green-700 text-center">
+                Baixar Imagem Convertida
+            </a>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById("dropZone");
+        const fileInput = document.getElementById("fileInput");
+        const imagePreview = document.getElementById("imagePreview");
+        const dropText = document.getElementById("dropText");
+
+        // Clique para abrir o seletor de arquivos
+        dropZone.addEventListener("click", () => fileInput.click());
+
+        // Arrastar e soltar eventos
+        dropZone.addEventListener("dragover", (event) => {
+            event.preventDefault();
+            dropZone.classList.add("bg-gray-200");
+        });
+
+        dropZone.addEventListener("dragleave", () => {
+            dropZone.classList.remove("bg-gray-200");
+        });
+
+        dropZone.addEventListener("drop", (event) => {
+            event.preventDefault();
+            dropZone.classList.remove("bg-gray-200");
+
+            const files = event.dataTransfer.files;
+            if (files.length) {
+                fileInput.files = files;
+                showPreview(files[0]);
+            }
+        });
+
+        // Atualiza o preview ao selecionar um arquivo
+        fileInput.addEventListener("change", (event) => {
+            if (event.target.files.length) {
+                showPreview(event.target.files[0]);
+            }
+        });
+
+        function showPreview(file) {
+            if (file && file.type.startsWith("image/")) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.src = e.target.result;
+                    imagePreview.classList.remove("hidden");
+                    dropText.classList.add("hidden");
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        async function convertImage() {
+            const formatSelect = document.getElementById("formatSelect");
+            const downloadLink = document.getElementById("downloadLink");
+            const downloadContainer = document.getElementById("downloadContainer");
+
+            if (!fileInput.files.length) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Oops...',
+                    text: 'Selecione uma imagem primeiro!',
+                });
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = async function (event) {
+                try {
+                    Swal.fire({
+                        title: 'Convertendo...',
+                        text: 'Aguarde um momento!',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    const image = await Jimp.read(event.target.result);
+                    const format = formatSelect.value;
+                    let mimeType = `image/${format}`;
+                    
+                    const buffer = await image.getBase64Async(mimeType);
+                    
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Conversão concluída!',
+                        text: 'Agora você pode baixar a imagem convertida.',
+                    });
+
+                    downloadLink.href = buffer;
+                    downloadLink.download = `imagem_convertida.${format}`;
+                    
+                    // Exibe o botão de download
+                    downloadContainer.classList.remove("hidden");
+                } catch (error) {
+                    console.error("Erro ao converter a imagem:", error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro!',
+                        text: 'Houve um problema ao converter a imagem.',
+                    });
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+    </script>
+
+</body>
+</html>
